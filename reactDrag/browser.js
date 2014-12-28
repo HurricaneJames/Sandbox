@@ -5,6 +5,7 @@ var Item = require('./components/item.jsx');
 
 var randomWords = [
   ["apple", "bannana", "watermelon", "oranges", "ice cream"],
+  [],
   ["alpha", "beta", "gamma", "iota"],
   ["hot dog", "mustard", "guava"],
   ["chocolate", "ice cream", "cookies", "brownies"],

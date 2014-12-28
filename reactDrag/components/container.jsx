@@ -113,6 +113,8 @@ var Container = React.createClass({ displayName: "Container",
   },
   onDragOverDropZone: function(e) {
     if(this.containerAcceptsDropData(e.dataTransfer.types)) { e.preventDefault(); } 
+    var dropZoneId = parseInt(e.currentTarget.dataset.key);
+    if(dropZoneId !== this.state.hoverOver) { this.setState({ hoverOver: dropZoneId }); }
   },
   onDragLeaveContainer: function(e) {
     var x = e.clientX
