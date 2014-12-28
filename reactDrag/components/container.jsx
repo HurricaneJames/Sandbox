@@ -114,9 +114,17 @@ var Container = React.createClass({ displayName: "Container",
   onDragOverDropZone: function(e) {
     if(this.containerAcceptsDropData(e.dataTransfer.types)) { e.preventDefault(); } 
   },
+  onDragLeaveContainer: function(e) {
+    var x = e.clientX
+      , y = e.clientY
+      , top    = e.currentTarget.offsetTop
+      , bottom = top + e.currentTarget.offsetHeight
+      , left   = e.currentTarget.offsetLeft
+      , right  = left + e.currentTarget.offsetWidth;
+    if(y <= top || y >= bottom || x <= left || x >= right) { this.resetHover(); }
+  },
   resetHover: function(e) {
-    console.debug("Reset Hover 2.0");
-    if(this.state.hoverOver !== NO_HOVER) { console.debug("SAY WHAT"); this.setState({ hoverOver: NO_HOVER }); }
+    if(this.state.hoverOver !== NO_HOVER) { this.setState({ hoverOver: NO_HOVER }); }
   },
   renderDropZone: function(index) {
     return <li key={"dropzone-" + index}
@@ -152,6 +160,7 @@ var Container = React.createClass({ displayName: "Container",
     return (
       <ul ref="container"
           onDrop={this.onDrop}
+          onDragLeave={this.onDragLeaveContainer}
           style={styles.container}>{items}</ul>
     );
   }
