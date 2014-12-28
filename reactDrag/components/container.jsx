@@ -1,7 +1,9 @@
 var React       = require('react')
-  , Item        = require('./item.jsx');
+  , Item        = require('./item.jsx')
+  , merge       = require('./merge');
 
 var DRAG_DROP_CONTENT_TYPE = "custom_container_type"
+  , ALLOWED_DROP_EFFECT = "move"
   , HOVER_KEY = -1
   , NO_HOVER  = -1;
 
@@ -17,18 +19,37 @@ var styles = {
   },
   item: {
     background: '#df90df',
-    margin: 5,
+    margin: 3,
     padding: 3
+  }, 
+  dropZone: {
+    height: 2,
+    backgroundColor: 'transparent'
+  },
+  activeDropZone: {
+    height: 15,
+    background: '#fff'
   }
 }
 
+var TextTemplate = React.createClass({ displayName: "Container-TextTemplate",
+  propTypes: {
+    item: React.PropTypes.any.isRequired
+  },
+  render: function() {
+    return <span>{this.props.item}</span>;
+  }
+});
+
 var Container = React.createClass({ displayName: "Container",
   propTypes: {
-    items: React.PropTypes.array
+    items: React.PropTypes.array,
+    itemTemplate: React.PropTypes.func,
   },
   getDefaultProps: function() {
     return {
-      items: []
+      items: [],
+      itemTemplate: TextTemplate
     };
   },
   getInitialState: function() {
@@ -44,44 +65,73 @@ var Container = React.createClass({ displayName: "Container",
   },
   onDragStart: function(e) {
     var selectedIndex = parseInt(e.currentTarget.dataset.key);
-    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.effectAllowed = ALLOWED_DROP_EFFECT;
     e.dataTransfer.setData(DRAG_DROP_CONTENT_TYPE, this.state.items[selectedIndex]);
 
-    this.setState({ selected: selectedIndex, hoverOver: selectedIndex });
-  },
-  onDragOver: function(e) {
-    if(!this.containerAcceptsDropData(event.dataTransfer.types)) { return; }
-    e.preventDefault(); // allow drop
-
-    var over = parseInt(e.currentTarget.dataset.key);
-    if(over !== HOVER_KEY) { this.setState({ hoverOver: (over === this.state.selected) ? NO_HOVER : over })}
+    this.setState({ selected: selectedIndex });
   },
   onDragEnd: function(e) {
-    if(this.state.hoverOver === NO_HOVER) { return; }
-    this.state.items.splice(this.state.hoverOver, 0, this.state.items.splice(this.state.selected, 1)[0]);
-    this.state.hoverOver = NO_HOVER;
-    this.setState(this.state);
-  },
-  injectHoverPlaceholder: function(items) {
-    if(this.state.hoverOver != NO_HOVER) {
-      items.splice(this.state.hoverOver + 1, 0, <li key={HOVER_KEY} style={styles.item}>Placeholder</li>);
+    if(e.dataTransfer.dropEffect === ALLOWED_DROP_EFFECT) {
+      this.state.items.splice(this.state.selected, 1);
+      this.setState(this.state);
     }
   },
+  onDrop: function(e) {
+    var data   = e.dataTransfer.getData(DRAG_DROP_CONTENT_TYPE);
+    if(this.state.hoverOver !== NO_HOVER) {
+      this.state.items.splice(this.state.hoverOver, 0, data);
+      this.state.hoverOver = NO_HOVER;
+      this.setState(this.state);
+    }
+  },
+  onDragOverDropZone: function(e) {
+    if(this.containerAcceptsDropData(e.dataTransfer.types)) { e.preventDefault(); } 
+  },
+  onDragEnterDropZone: function(e) {
+    var over = parseInt(e.currentTarget.dataset.key);
+    if(over !== this.state.hoverOver) { this.setState({ hoverOver: over }); }    
+  },
+  onDragLeaveDropZone: function(e) {
+    this.setState({ hoverOver: NO_HOVER });
+  },
+  renderDropZone: function(index) {
+    return <li key={"dropzone-" + index}
+               data-key={index}
+               style={merge(
+                styles.dropZone,
+                this.state.hoverOver === index && styles.activeDropZone
+               )}
+               onDragEnter={this.onDragEnterDropZone}
+               onDragLeave={this.onDragLeaveDropZone}
+               onDragOver={this.onDragOverDropZone}
+               onDrop={this.onDrop}></li>;
+  },
+  renderListElements: function() {
+    var items = [];
+    for(var i=0, length=this.state.items.length;i<length;i++) {
+      items.push(this.renderDropZone(i));
+      items.push(this.renderListElement(React.createElement(this.props.itemTemplate, { item: this.state.items[i] }), i));
+    }
+    items.push(this.renderDropZone(i));
+    return items;
+  },
+  renderListElement: function(item, key) {
+    return(
+      <li key={key}
+          data-key={key}
+          style={styles.item}
+          onClick={this.onClick}
+          draggable  ={true}
+          onDragStart={this.onDragStart}
+          onDragEnd  ={this.onDragEnd}>{item}</li>
+    );
+  },
   render: function() {
-    var _this = this, items = this.state.items.map(function(item, index) {
-      return <li key={index}
-                data-key={index}
-                style={styles.item}
-                onClick={_this.onClick}
-                draggable={true}
-                onDragStart={_this.onDragStart}
-                onDragOver={_this.onDragOver}
-                onDragEnd={_this.onDragEnd}>{item}</li>;
-    });
-
-    this.injectHoverPlaceholder(items);
-
-    return <ul style={styles.container}>{items}</ul>;
+    var items = this.renderListElements();
+    return (
+      <ul ref="container"
+          style={styles.container}>{items}</ul>
+    );
   }
 });
 

@@ -13,8 +13,7 @@ var randomWords = [
 
 for(var i=1, length=randomWords.length; i<=length; i++) {
   var defaultProps = {
-    storeId: "container-" + i,
-    items: randomWords[i-1].map(function(name) { return React.createElement(Item, { name: name }); })
+    items: randomWords[i-1] //.map(function(name) { return React.createElement(Item, { name: name }); })
   };
   React.render(React.createElement(Container, defaultProps), document.querySelector('#container' + i));
 }
