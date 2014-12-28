@@ -24,11 +24,13 @@ var styles = {
   }, 
   dropZone: {
     height: 2,
-    backgroundColor: 'transparent'
+    backgroundColor: 'transparent',
+    transition: 'height 400ms'
   },
   activeDropZone: {
     height: 15,
-    background: '#fff'
+    background: '#fff',
+    transition: 'height 150ms'
   }
 }
 
