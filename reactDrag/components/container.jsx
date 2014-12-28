@@ -5,7 +5,8 @@ var React       = require('react')
 var DRAG_DROP_CONTENT_TYPE = "custom_container_type"
   , ALLOWED_DROP_EFFECT = "move"
   , HOVER_KEY = -1
-  , NO_HOVER  = -1;
+  , NO_HOVER  = -1
+  , NONE_SELECTED = -1;
 
 // TODO - make this a require or a prop...
 var styles = {
@@ -18,10 +19,13 @@ var styles = {
     padding: 2
   },
   item: {
-    background: '#df90df',
+    backgroundColor: '#df90df',
     margin: 3,
     padding: 3
-  }, 
+  },
+  selectedItem: {
+    backgroundColor: '#333'
+  },
   dropZone: {
     height: 2,
     backgroundColor: 'transparent',
@@ -57,7 +61,7 @@ var Container = React.createClass({ displayName: "Container",
   getInitialState: function() {
     return {
       items: this.props.items,
-      selected:  -1,
+      selected:  NONE_SELECTED,
       hoverOver: -1
     };
   },
@@ -75,43 +79,57 @@ var Container = React.createClass({ displayName: "Container",
   onDragEnd: function(e) {
     if(e.dataTransfer.dropEffect === ALLOWED_DROP_EFFECT) {
       this.state.items.splice(this.state.selected, 1);
+      this.state.hoverOver = NO_HOVER;
+      this.state.selected = NONE_SELECTED;
       this.setState(this.state);
+      return;
+    }
+    if(this.state.hoverOver !== NO_HOVER) {
+      this.setState({ hoverOver: NO_HOVER, selected: NONE_SELECTED });
     }
   },
   onDrop: function(e) {
     var data   = e.dataTransfer.getData(DRAG_DROP_CONTENT_TYPE);
+    // this needs some testing
+    // presently, it appears that drop fires before dragend, so it is not a problem to clear HOVER_OVER
+    // howver, it may necessary to add a setTimeout of a couple ms to clear the hoverOver element in the
+    // onDragEnd function
     if(this.state.hoverOver !== NO_HOVER) {
       this.state.items.splice(this.state.hoverOver, 0, data);
+      if(this.state.selected > this.state.hoverOver) {
+        // we are adding above the item to be removed, fix the selected to point to the old item
+        this.state.selected = this.state.selected+1;
+      }
       this.state.hoverOver = NO_HOVER;
+
       this.setState(this.state);
     }
+  },
+  onDragOverItem: function(e) {
+    if(this.containerAcceptsDropData(e.dataTransfer.types)) { e.preventDefault(); } 
+    var to = parseInt(e.currentTarget.dataset.key);
+    if(e.clientY - e.currentTarget.offsetTop > e.currentTarget.offsetHeight / 2) { to++; }
+    if(to !== this.state.hoverOver) { this.setState({ hoverOver: to }); }
   },
   onDragOverDropZone: function(e) {
     if(this.containerAcceptsDropData(e.dataTransfer.types)) { e.preventDefault(); } 
   },
-  onDragEnterDropZone: function(e) {
-    var over = parseInt(e.currentTarget.dataset.key);
-    if(over !== this.state.hoverOver) { this.setState({ hoverOver: over }); }    
-  },
-  onDragLeaveDropZone: function(e) {
-    this.setState({ hoverOver: NO_HOVER });
+  resetHover: function(e) {
+    console.debug("Reset Hover 2.0");
+    if(this.state.hoverOver !== NO_HOVER) { console.debug("SAY WHAT"); this.setState({ hoverOver: NO_HOVER }); }
   },
   renderDropZone: function(index) {
     return <li key={"dropzone-" + index}
                data-key={index}
-               style={merge(
-                styles.dropZone,
-                this.state.hoverOver === index && styles.activeDropZone
-               )}
-               onDragEnter={this.onDragEnterDropZone}
-               onDragLeave={this.onDragLeaveDropZone}
-               onDragOver={this.onDragOverDropZone}
-               onDrop={this.onDrop}></li>;
+               style={merge(styles.dropZone, this.state.hoverOver === index && styles.activeDropZone)}
+               onDragOver={this.onDragOverDropZone}></li>;
   },
   renderListElements: function() {
     var items = [];
     for(var i=0, length=this.state.items.length;i<length;i++) {
       items.push(this.renderDropZone(i));
+      // TODO - see if there is a performance hit when recreating these elements
+      //        if there is, create a cache of elements in the state when the items are updated
       items.push(this.renderListElement(React.createElement(this.props.itemTemplate, { item: this.state.items[i] }), i));
     }
     items.push(this.renderDropZone(i));
@@ -121,9 +139,10 @@ var Container = React.createClass({ displayName: "Container",
     return(
       <li key={key}
           data-key={key}
-          style={styles.item}
+          style={merge(styles.item, this.state.selected===key && styles.selectedItem )}
           onClick={this.onClick}
           draggable  ={true}
+          onDragOver ={this.onDragOverItem}
           onDragStart={this.onDragStart}
           onDragEnd  ={this.onDragEnd}>{item}</li>
     );
@@ -132,6 +151,7 @@ var Container = React.createClass({ displayName: "Container",
     var items = this.renderListElements();
     return (
       <ul ref="container"
+          onDrop={this.onDrop}
           style={styles.container}>{items}</ul>
     );
   }
